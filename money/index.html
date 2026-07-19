@@ -1,1 +1,552 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#F2F4F1">
+<title>我們的記帳本</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#F2F4F1; --card:#FFFFFF; --ink:#16211C; --dim:#6B7A72; --line:#DFE5E0;
+  --h0:#EAEFEA; --h1:#CFE3D4; --h2:#9CCBAB; --h3:#E8B75C; --h4:#DE7A5C;
+  --accent:#1F7A54; --warn:#8A5A16;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{
+  font-family:"Noto Sans TC",-apple-system,BlinkMacSystemFont,sans-serif;
+  background:var(--bg);color:var(--ink);min-height:100vh;
+  padding:20px 14px calc(60px + env(safe-area-inset-bottom));
+  display:flex;justify-content:center;-webkit-tap-highlight-color:transparent;
+}
+.wrap{width:100%;max-width:500px}
+.dis{font-family:"Space Grotesk",sans-serif;font-variant-numeric:tabular-nums}
 
+/* masthead */
+.top{display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:16px;padding:0 4px}
+.top h1{font-size:17px;font-weight:700}
+.top .sub{font-size:11px;color:var(--dim);margin-top:3px;display:flex;align-items:center;gap:6px}
+.pip{width:6px;height:6px;border-radius:50%;background:var(--dim);flex:none}
+.pip.live{background:var(--accent)}
+.pip.demo{background:var(--h3)}
+.top .amt{text-align:right}
+.top .amt .k{font-size:10px;color:var(--dim);letter-spacing:.1em}
+.top .amt .v{font-size:27px;font-weight:700;letter-spacing:-.03em;line-height:1.1}
+
+.card{background:var(--card);border-radius:18px;padding:18px;margin-bottom:12px;border:1px solid var(--line)}
+.card h2{font-size:13px;font-weight:700;margin-bottom:3px}
+.card .hint{font-size:11px;color:var(--dim);margin-bottom:15px}
+
+/* form */
+label.fl{display:block;font-size:11px;color:var(--dim);margin-bottom:7px;letter-spacing:.06em}
+.fg{margin-bottom:17px}
+.amtbox{display:flex;align-items:baseline;gap:6px;background:var(--bg);border-radius:14px;padding:8px 16px;border:1.5px solid transparent}
+.amtbox:focus-within{border-color:var(--accent);background:#fff}
+.amtbox span{font-size:14px;color:var(--dim)}
+.amtbox input{border:none;background:none;outline:none;width:100%;font:700 30px "Space Grotesk",sans-serif;color:var(--ink);letter-spacing:-.03em;-webkit-appearance:none}
+.amtbox input::-webkit-outer-spin-button,.amtbox input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+input[type=date],input[type=text]{
+  width:100%;padding:12px 15px;border:1.5px solid transparent;border-radius:14px;
+  background:var(--bg);font-size:16px;color:var(--ink);outline:none;
+  font-family:"Noto Sans TC",sans-serif;-webkit-appearance:none;
+}
+input:focus{border-color:var(--accent);background:#fff}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+.g3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.pick input{position:absolute;opacity:0;width:0;height:0}
+.pick label{display:block;text-align:center;padding:12px 6px;border-radius:13px;background:var(--bg);
+  font-size:13px;color:var(--dim);cursor:pointer;transition:.16s;border:1.5px solid transparent}
+.pick input:checked+label{background:#fff;border-color:var(--accent);color:var(--accent);font-weight:700}
+.pick input:focus-visible+label{outline:2px solid var(--accent);outline-offset:2px}
+
+/* 悄悄話 */
+.egg{
+  max-height:0;opacity:0;overflow:hidden;
+  transition:max-height .35s cubic-bezier(.2,.8,.2,1),opacity .3s,margin-top .35s,padding .35s;
+  font-size:12.5px;line-height:1.6;color:var(--warn);
+  background:linear-gradient(100deg,#FDF3E2,#FBEFE6);
+  border-radius:12px;padding:0 13px;margin-top:0;
+}
+.egg.on{max-height:120px;opacity:1;margin-top:11px;padding:11px 13px}
+.egg .mark{opacity:.55;margin-right:5px}
+
+.btn{width:100%;padding:15px;border:none;border-radius:15px;background:var(--accent);color:#fff;
+  font:700 15px "Noto Sans TC",sans-serif;cursor:pointer;transition:.16s;letter-spacing:.04em}
+.btn:active{transform:scale(.985)}
+.btn:disabled{opacity:.5;cursor:default}
+
+/* 日曆 */
+.cal{display:grid;grid-template-columns:repeat(7,1fr);gap:5px}
+.dow{text-align:center;font-size:10px;color:var(--dim);padding-bottom:3px;letter-spacing:.06em}
+.day{aspect-ratio:1;min-height:40px;border-radius:9px;background:var(--h0);display:flex;flex-direction:column;
+  align-items:center;justify-content:center;font-size:11px;cursor:pointer;border:1.5px solid transparent;
+  transition:transform .15s,border-color .15s;position:relative}
+@supports not (aspect-ratio:1){ .day{height:44px} }
+.day:hover{transform:scale(1.07)}
+.day.sel{border-color:var(--ink)}
+.day.today{box-shadow:inset 0 0 0 1.5px rgba(22,33,28,.25)}
+.day.empty{background:none;cursor:default}
+.day.future{opacity:.35;cursor:default}
+.day .n{font-family:"Space Grotesk",sans-serif;font-weight:500}
+.day.hot .n{color:#fff}
+.day .d{width:3px;height:3px;border-radius:50%;background:currentColor;margin-top:2px;opacity:.55}
+.day:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.scale-row{display:flex;align-items:center;gap:6px;margin-top:13px;font-size:10px;color:var(--dim)}
+.scale-row i{width:15px;height:9px;border-radius:2px;display:inline-block}
+.daybox{margin-top:14px;border-top:1px dashed var(--line);padding-top:13px;min-height:52px}
+.daybox .dh{font-size:12px;font-weight:700;margin-bottom:8px}
+.daybox .row{display:flex;justify-content:space-between;gap:10px;font-size:12px;padding:5px 0;color:var(--dim)}
+.daybox .row b{color:var(--ink);font-weight:500}
+.daybox .row .m{font-family:"Space Grotesk",sans-serif;color:var(--ink);font-weight:500}
+.daybox .none{font-size:12px;color:var(--dim)}
+
+/* 統計 */
+.stat3{display:flex;gap:10px;margin-bottom:15px}
+.st{flex:1;background:var(--bg);border-radius:12px;padding:10px 12px}
+.st .k{font-size:10px;color:var(--dim)}
+.st .v{font-size:16px;font-weight:700;margin-top:2px;font-family:"Space Grotesk",sans-serif}
+.st .v.up{color:var(--h4)}.st .v.down{color:var(--accent)}
+
+.cats{display:flex;flex-direction:column;gap:10px}
+.cat .t{display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px}
+.cat .t .m{font-family:"Space Grotesk",sans-serif;color:var(--dim)}
+.cat .bar{height:6px;border-radius:3px;background:var(--h0);overflow:hidden}
+.cat .fill{height:100%;border-radius:3px;transition:width .6s cubic-bezier(.2,.8,.2,1)}
+
+/* 狀態列 */
+.status{display:flex;align-items:center;gap:10px;background:#FDF3E2;color:var(--warn);
+  border-radius:12px;padding:10px 13px;font-size:11px;line-height:1.55;margin-bottom:12px}
+.status.hide{display:none}
+.status .txt{flex:1}
+.status button{border:1px solid rgba(138,90,22,.35);background:none;color:var(--warn);
+  border-radius:8px;padding:5px 10px;font:500 11px "Noto Sans TC",sans-serif;cursor:pointer;flex:none}
+
+.empty{text-align:center;color:var(--dim);font-size:12px;padding:22px 0}
+
+.toast{position:fixed;left:50%;bottom:26px;transform:translate(-50%,90px);background:var(--ink);color:#fff;
+  padding:12px 22px;border-radius:20px;font-size:13px;line-height:1.6;opacity:0;z-index:99;
+  transition:.28s cubic-bezier(.22,.9,.24,1);max-width:min(420px,calc(100vw - 40px));text-align:center;
+  box-shadow:0 12px 30px rgba(22,33,28,.22)}
+.toast.show{transform:translate(-50%,0);opacity:1}
+.toast.err{background:#B5432B}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="top">
+    <div>
+      <h1>我們的記帳本</h1>
+      <div class="sub"><span class="pip" id="pip"></span><span id="topSub">載入中…</span></div>
+    </div>
+    <div class="amt">
+      <div class="k">本月</div>
+      <div class="v dis" id="topAmt">—</div>
+    </div>
+  </div>
+
+  <div class="status hide" id="status">
+    <span class="txt" id="statusTxt"></span>
+    <button type="button" id="retryBtn">重新載入</button>
+  </div>
+
+  <!-- 記一筆 -->
+  <div class="card">
+    <form id="f">
+      <div class="fg">
+        <label class="fl" for="amount">花了多少</label>
+        <div class="amtbox"><span>NT$</span><input type="number" id="amount" inputmode="numeric" min="0" step="1" placeholder="0" required></div>
+      </div>
+      <div class="fg">
+        <label class="fl">誰付的</label>
+        <div class="g2">
+          <div class="pick"><input type="radio" id="u1" name="user" value="老公" checked><label for="u1">老公</label></div>
+          <div class="pick"><input type="radio" id="u2" name="user" value="老婆"><label for="u2">老婆</label></div>
+        </div>
+      </div>
+      <div class="fg">
+        <label class="fl">花在什麼</label>
+        <div class="g3">
+          <div class="pick"><input type="radio" id="c1" name="category" value="餐飲飲食" checked><label for="c1">飲食</label></div>
+          <div class="pick"><input type="radio" id="c2" name="category" value="生活日用"><label for="c2">日用</label></div>
+          <div class="pick"><input type="radio" id="c3" name="category" value="交通出行"><label for="c3">交通</label></div>
+          <div class="pick"><input type="radio" id="c4" name="category" value="休閒娛樂"><label for="c4">娛樂</label></div>
+          <div class="pick"><input type="radio" id="c5" name="category" value="居住房屋"><label for="c5">居住</label></div>
+          <div class="pick"><input type="radio" id="c6" name="category" value="其他支出"><label for="c6">其他</label></div>
+        </div>
+        <div class="egg" id="egg" aria-live="polite"></div>
+      </div>
+      <div class="fg"><label class="fl" for="date">哪一天</label><input type="date" id="date" required></div>
+      <div class="fg"><label class="fl" for="note">備註</label><input type="text" id="note" maxlength="60" placeholder="買晚餐、好市多補貨"></div>
+      <button class="btn" id="btn" type="submit">記下這筆</button>
+    </form>
+  </div>
+
+  <!-- 日曆熱區 -->
+  <div class="card">
+    <h2>這個月每天花多少</h2>
+    <div class="hint">顏色越深代表當天花越多，點格子看明細</div>
+    <div class="cal" id="cal"></div>
+    <div class="scale-row">
+      <span>少</span>
+      <i style="background:var(--h1)"></i><i style="background:var(--h2)"></i>
+      <i style="background:var(--h3)"></i><i style="background:var(--h4)"></i>
+      <span>多</span>
+      <span style="margin-left:auto" id="peakNote"></span>
+    </div>
+    <div class="daybox" id="daybox"><div class="none">還沒選日期。</div></div>
+  </div>
+
+  <!-- 趨勢 -->
+  <div class="card">
+    <h2>六個月走勢</h2>
+    <div class="hint">看看是越花越多還是收斂了</div>
+    <div class="stat3">
+      <div class="st"><div class="k">對比上月</div><div class="v" id="sDelta">—</div></div>
+      <div class="st"><div class="k">日均</div><div class="v" id="sAvg">—</div></div>
+      <div class="st"><div class="k">最高月</div><div class="v" id="sMax">—</div></div>
+    </div>
+    <div id="lineChart"></div>
+  </div>
+
+  <!-- 類別 -->
+  <div class="card">
+    <h2>類別分佈</h2>
+    <div class="hint">本月支出組成</div>
+    <div class="cats" id="cats"></div>
+  </div>
+
+</div>
+<div class="toast" id="toast" role="status"></div>
+
+<script>
+/* ══════════ 設定 ══════════ */
+const GAS_URL = 'https://script.google.com/macros/s/AKfycbzO7_790wckyaBHI-b6aXetpuFHKEMu-dyrLcmz1GBX9TDMg_GhKE7_60_POFFhQDsj/exec';
+const CATS = ['餐飲飲食','生活日用','交通出行','休閒娛樂','居住房屋','其他支出'];
+const CAT_COLORS = ['#DE7A5C','#1F7A54','#E8B75C','#7C6BC4','#4C8FB5','#9AA79F'];
+const READ_TIMEOUT = 9000;
+
+let entries = [], mode = 'loading', selDay = null;
+
+/* ══════════ 讀取（JSONP + 逾時重試） ══════════ */
+function jsonp(){
+  return new Promise(resolve=>{
+    const cb = 'cb_' + Math.random().toString(36).slice(2);
+    const s = document.createElement('script');
+    let done = false;
+    const timer = setTimeout(()=>finish(null), READ_TIMEOUT);
+    function finish(v){ if(done) return; done = true;
+      clearTimeout(timer); delete window[cb]; s.remove(); resolve(v); }
+    window[cb] = d => finish(d);
+    s.onerror = () => finish(null);
+    s.src = GAS_URL + (GAS_URL.includes('?')?'&':'?') + 'action=read&callback=' + cb + '&_=' + Date.now();
+    document.body.appendChild(s);
+  });
+}
+async function loadData(){
+  let r = await jsonp();
+  if (r === null) r = await jsonp();   // GAS 冷啟動常常第一次失敗，再試一次
+  return r;
+}
+
+/* ══════════ 資料正規化 ══════════ */
+const PICK = (o, keys) => { for(const k of keys) if(o[k]!=null && o[k]!=='') return o[k]; return ''; };
+function toDate(v){
+  if(!v) return '';
+  const s = String(v).trim();
+  if(/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+  // GAS 常把日期序列化成 UTC 的 ISO 字串（台北的 00:00 會變成前一天 16:00Z），補回 +8 才是正確日期
+  if(/^\d{4}-\d{2}-\d{2}T/.test(s)){
+    const d = new Date(s);
+    if(!isNaN(d)) return new Date(d.getTime() + 8*3600*1000).toISOString().slice(0,10);
+  }
+  let m = s.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})/);
+  if(m) return `${m[1]}-${m[2].padStart(2,'0')}-${m[3].padStart(2,'0')}`;
+  const d = new Date(s);
+  if(isNaN(d)) return '';
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+function toAmount(v){
+  const n = Number(String(v).replace(/[^0-9.\-]/g,''));
+  return isFinite(n) ? n : 0;
+}
+function normCat(v){
+  const s = String(v||'').trim();
+  if(CATS.includes(s)) return s;
+  const hit = CATS.find(c => c.includes(s) || s.includes(c.slice(0,2)));
+  return hit || '其他支出';
+}
+function normalize(rows){
+  if(!Array.isArray(rows)) return [];
+  return rows.map(r => ({
+    date:     toDate(PICK(r, ['date','日期','消費日期','時間','timestamp'])),
+    amount:   toAmount(PICK(r, ['amount','金額','消費金額'])),
+    user:     String(PICK(r, ['user','記帳人','人員','who'])).trim() || '老公',
+    category: normCat(PICK(r, ['category','類型','消費類型','類別'])),
+    note:     String(PICK(r, ['note','備註','備註說明','說明'])).trim()
+  })).filter(e => e.date && e.amount > 0);
+}
+
+/* ══════════ 示範資料 ══════════ */
+function demoData(){
+  let seed = 20260719;
+  const rnd = () => (seed = (seed*1103515245+12345) % 2147483648) / 2147483648;
+  const notes = {'餐飲飲食':'午餐','生活日用':'好市多補貨','交通出行':'加油','休閒娛樂':'看電影','居住房屋':'水電','其他支出':'雜項'};
+  const now = new Date(), out = [];
+  for(let m=5;m>=0;m--){
+    const d0 = new Date(now.getFullYear(), now.getMonth()-m, 1);
+    const days = m===0 ? now.getDate() : new Date(d0.getFullYear(), d0.getMonth()+1, 0).getDate();
+    const n = 26 + Math.floor(rnd()*16);
+    for(let i=0;i<n;i++){
+      const day = 1+Math.floor(rnd()*days), cat = CATS[Math.floor(rnd()*CATS.length)];
+      const amt = cat==='居住房屋' ? 4000+Math.floor(rnd()*12000)
+                : cat==='餐飲飲食' ? 90+Math.floor(rnd()*620)
+                : 120+Math.floor(rnd()*1800);
+      out.push({date:`${d0.getFullYear()}-${String(d0.getMonth()+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`,
+                amount:amt, category:cat, user: rnd()>0.48?'老公':'老婆', note:notes[cat]});
+    }
+  }
+  return out;
+}
+
+/* ══════════ 工具 ══════════ */
+const key = d => String(d).slice(0,7);
+const sum = a => a.reduce((s,x)=>s+Number(x.amount||0),0);
+const fmt = n => Math.round(n).toLocaleString('en-US');
+function monthKeys(n){
+  const now = new Date(), o = [];
+  for(let i=n-1;i>=0;i--){
+    const d = new Date(now.getFullYear(), now.getMonth()-i, 1);
+    o.push(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`);
+  }
+  return o;
+}
+const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+/* ══════════ 折線圖 ══════════ */
+function drawLine(el, labels, values){
+  const W=440,H=170,PL=38,PR=10,PT=14,PB=24;
+  const max = Math.max(...values,1)*1.15;
+  const x = i => PL + i*(W-PL-PR)/(labels.length-1);
+  const y = v => PT + (1-v/max)*(H-PT-PB);
+  let g='';
+  for(let i=0;i<=3;i++){
+    const gy=PT+i*(H-PT-PB)/3, val=max*(1-i/3);
+    g += `<line x1="${PL}" y1="${gy}" x2="${W-PR}" y2="${gy}" stroke="#DFE5E0"/>
+          <text x="${PL-6}" y="${gy+3.5}" text-anchor="end" font-size="9" fill="#6B7A72" font-family="Space Grotesk">${val>=1000?Math.round(val/1000)+'k':Math.round(val)}</text>`;
+  }
+  const pts = values.map((v,i)=>`${x(i)},${y(v)}`).join(' ');
+  let dots='', lbl='';
+  values.forEach((v,i)=>{
+    const last = i===values.length-1;
+    dots += `<circle cx="${x(i)}" cy="${y(v)}" r="${last?5:3.2}" fill="${last?'#1F7A54':'#fff'}" stroke="#1F7A54" stroke-width="2"/>`;
+    lbl  += `<text x="${x(i)}" y="${H-7}" text-anchor="middle" font-size="9" fill="#6B7A72" font-family="Space Grotesk">${Number(labels[i].slice(5))}月</text>`;
+  });
+  el.innerHTML = `<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="近六個月支出趨勢">
+    ${g}<path d="M${x(0)},${H-PB} L${pts.replace(/ /g,' L')} L${x(values.length-1)},${H-PB} Z" fill="rgba(31,122,84,.09)"/>
+    <polyline points="${pts}" fill="none" stroke="#1F7A54" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+    ${dots}${lbl}</svg>`;
+}
+
+/* ══════════ 日曆 ══════════ */
+function heatColor(v,max){
+  if(v<=0) return {bg:'var(--h0)',hot:false};
+  const r = v/max;
+  if(r<.25) return {bg:'#CFE3D4',hot:false};
+  if(r<.5)  return {bg:'#9CCBAB',hot:false};
+  if(r<.75) return {bg:'#E8B75C',hot:false};
+  return {bg:'#DE7A5C',hot:true};
+}
+function renderCal(){
+  const now=new Date(), Y=now.getFullYear(), M=now.getMonth();
+  const first=new Date(Y,M,1).getDay(), days=new Date(Y,M+1,0).getDate(), today=now.getDate();
+  const mk = `${Y}-${String(M+1).padStart(2,'0')}`;
+  const dayTot = {};
+  entries.filter(e=>key(e.date)===mk).forEach(e=>{
+    const d = Number(String(e.date).slice(8,10));
+    dayTot[d] = (dayTot[d]||0) + Number(e.amount||0);
+  });
+  const max = Math.max(...Object.values(dayTot), 1);
+  let html = ['日','一','二','三','四','五','六'].map(d=>`<div class="dow">${d}</div>`).join('');
+  for(let i=0;i<first;i++) html += `<div class="day empty"></div>`;
+  for(let d=1;d<=days;d++){
+    const v = dayTot[d]||0, {bg,hot} = heatColor(v,max), future = d>today;
+    html += `<div class="day${hot?' hot':''}${future?' future':''}${selDay===d?' sel':''}${d===today?' today':''}"
+      style="background:${future?'var(--h0)':bg}" ${future?'':`tabindex="0" data-d="${d}"`}
+      role="${future?'presentation':'button'}" aria-label="${M+1}月${d}日 ${fmt(v)} 元">
+      <span class="n">${d}</span>${v>0?'<span class="d"></span>':''}</div>`;
+  }
+  const cal = document.getElementById('cal');
+  cal.innerHTML = html;
+  cal.querySelectorAll('[data-d]').forEach(el=>{
+    const go = () => { selDay = Number(el.dataset.d); renderCal(); renderDayBox(); };
+    el.addEventListener('click', go);
+    el.addEventListener('keydown', ev=>{ if(ev.key==='Enter'||ev.key===' '){ ev.preventDefault(); go(); }});
+  });
+  const peak = Object.entries(dayTot).sort((a,b)=>b[1]-a[1])[0];
+  document.getElementById('peakNote').textContent = peak ? `最高 ${peak[0]} 號 ${fmt(peak[1])}` : '';
+}
+function renderDayBox(){
+  const box = document.getElementById('daybox');
+  if(!selDay){ box.innerHTML = '<div class="none">還沒選日期。</div>'; return; }
+  const now = new Date();
+  const ds = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(selDay).padStart(2,'0')}`;
+  const list = entries.filter(e=>String(e.date).slice(0,10)===ds);
+  if(!list.length){
+    box.innerHTML = `<div class="dh">${now.getMonth()+1} 月 ${selDay} 日</div><div class="none">這天沒有紀錄。</div>`;
+    return;
+  }
+  box.innerHTML = `<div class="dh">${now.getMonth()+1} 月 ${selDay} 日　共 ${fmt(sum(list))}</div>` +
+    list.map(e=>`<div class="row"><b>${esc(e.category)}${e.note?'・'+esc(e.note):''}</b>
+      <span><span style="margin-right:10px">${esc(e.user)}</span><span class="m">${fmt(e.amount)}</span></span></div>`).join('');
+}
+
+/* ══════════ 主渲染 ══════════ */
+function render(){
+  const mk = monthKeys(6);
+  const tot = mk.map(k => sum(entries.filter(e=>key(e.date)===k)));
+  drawLine(document.getElementById('lineChart'), mk, tot);
+
+  const cur = tot[5], prev = tot[4];
+  const curE = entries.filter(e=>key(e.date)===mk[5]);
+  document.getElementById('topAmt').textContent = fmt(cur);
+  document.getElementById('topSub').textContent =
+    `${new Date().getMonth()+1} 月・${curE.length} 筆` + (mode==='demo' ? '（示範資料）' : '');
+  document.getElementById('pip').className = 'pip ' + (mode==='live'?'live':mode==='demo'?'demo':'');
+
+  const d = prev ? (cur-prev)/prev*100 : 0, dEl = document.getElementById('sDelta');
+  dEl.textContent = prev ? (d>=0?'+':'−') + Math.abs(d).toFixed(0) + '%' : '—';
+  dEl.className = 'v ' + (d>=0?'up':'down');
+  document.getElementById('sAvg').textContent = fmt(cur / Math.max(new Date().getDate(),1));
+  const mi = tot.indexOf(Math.max(...tot));
+  document.getElementById('sMax').textContent = cur||prev ? Number(mk[mi].slice(5))+'月' : '—';
+
+  const cs = CATS.map((c,i)=>({c, v:sum(curE.filter(e=>e.category===c)), col:CAT_COLORS[i]}))
+                 .sort((a,b)=>b.v-a.v);
+  const mx = Math.max(...cs.map(o=>o.v), 1);
+  document.getElementById('cats').innerHTML = curE.length
+    ? cs.map(o=>`<div class="cat">
+        <div class="t"><span>${o.c}</span><span class="m">${fmt(o.v)}・${cur?((o.v/cur)*100).toFixed(0):0}%</span></div>
+        <div class="bar"><div class="fill" style="width:${o.v/mx*100}%;background:${o.col}"></div></div></div>`).join('')
+    : `<div class="empty">這個月還沒有紀錄。記下第一筆，這裡就會長出來。</div>`;
+
+  renderCal(); renderDayBox();
+}
+
+/* ══════════ 狀態列 ══════════ */
+function setStatus(kind, msg){
+  const bar = document.getElementById('status');
+  if(!msg){ bar.classList.add('hide'); return; }
+  bar.classList.remove('hide');
+  document.getElementById('statusTxt').textContent = msg;
+}
+
+/* ══════════ 悄悄話（只有老婆看得到） ══════════ */
+const EGGS = {
+  '餐飲飲食':'王家家訓，吃不能省，做的很好',
+  '生活日用':'這個漆漆也有用，不能怪陳歪歪',
+  '交通出行':'我的腳很尊貴的，不走路剛好而已吧',
+  '休閒娛樂':'賺錢這麼辛苦，真的剛好而已',
+  '居住房屋':'如果你輸入的是房貸，那不要忘記老公很努力賺錢喔',
+  '其他支出':'真的分不出來喔，統統塞給其他好嗎'
+};
+const eggEl = document.getElementById('egg');
+function currentEgg(){
+  if(document.querySelector('input[name=user]:checked').value !== '老婆') return null;
+  return EGGS[document.querySelector('input[name=category]:checked').value] || null;
+}
+function paintEgg(){
+  const msg = currentEgg();
+  if(msg){ eggEl.innerHTML = `<span class="mark">✎</span>${msg}`; eggEl.classList.add('on'); }
+  else eggEl.classList.remove('on');
+}
+document.querySelectorAll('input[name=user],input[name=category]')
+  .forEach(el => el.addEventListener('change', paintEgg));
+
+/* ══════════ 送出 ══════════ */
+const toast = document.getElementById('toast');
+let toastTimer;
+function showToast(msg, err){
+  toast.textContent = msg;
+  toast.className = 'toast show' + (err ? ' err' : '');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=>toast.className='toast', err ? 4200 : 3400);
+}
+function todayStr(){
+  const n = new Date();
+  return `${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,'0')}-${String(n.getDate()).padStart(2,'0')}`;
+}
+document.getElementById('date').value = todayStr();
+paintEgg();
+
+document.getElementById('f').addEventListener('submit', e=>{
+  e.preventDefault();
+  const btn = document.getElementById('btn');
+  const amt = toAmount(document.getElementById('amount').value);
+  if(amt <= 0){ showToast('金額要大於 0 才記得下去。', true); return; }
+
+  btn.disabled = true; btn.textContent = '同步中…';
+  const d = {
+    amount: amt,
+    user: document.querySelector('input[name=user]:checked').value,
+    category: document.querySelector('input[name=category]:checked').value,
+    date: document.getElementById('date').value,
+    note: document.getElementById('note').value.trim()
+  };
+  const eggMsg = currentEgg();
+
+  // no-cors 模式下瀏覽器不接受自訂的 application/json 標頭，
+  // 改用 form-urlencoded，後端才能用 e.parameter 穩定接到欄位
+  const body = new URLSearchParams();
+  Object.keys(d).forEach(k => body.append(k, d[k]));
+
+  fetch(GAS_URL, {
+    method: 'POST',
+    mode: 'no-cors',
+    headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+    body: body.toString()
+  })
+    .then(()=>{
+      showToast(eggMsg || ('已記下 NT$ ' + fmt(d.amount)));
+      entries.push({...d});
+      render();
+      document.getElementById('amount').value = '';
+      document.getElementById('note').value = '';
+      document.getElementById('date').value = todayStr();
+    })
+    .catch(()=>showToast('沒送出去。檢查網路後再按一次，這筆還留在欄位裡。', true))
+    .finally(()=>{ btn.disabled = false; btn.textContent = '記下這筆'; });
+});
+
+/* ══════════ 啟動 ══════════ */
+async function boot(){
+  mode = 'loading';
+  setStatus(null, '');
+  document.getElementById('topSub').textContent = '載入中…';
+  const raw = await loadData();
+
+  if(raw === null){
+    entries = demoData(); mode = 'demo';
+    setStatus('demo', '讀不到試算表，畫面顯示的是示範資料。請確認 Apps Script 已加入 doGet 並重新部署。');
+  } else {
+    entries = normalize(raw); mode = 'live';
+    setStatus(null, '');
+    if(!entries.length) setStatus('empty', '已連上試算表，但目前沒有可用的紀錄。記下第一筆試試。');
+  }
+  render();
+}
+document.getElementById('retryBtn').addEventListener('click', boot);
+
+boot().catch(err => {
+  console.error(err);
+  entries = demoData(); mode = 'demo';
+  setStatus('demo', '載入時發生錯誤，先顯示示範資料。若在 iPhone 上直接開啟本機檔案，請改用網址開啟。');
+  try { render(); } catch(e) { console.error(e); }
+});
+window.addEventListener('error', ev => console.error('未攔截的錯誤：', ev.message));
+</script>
+</body>
+</html>
