@@ -102,6 +102,24 @@ input:focus{border-color:var(--accent);background:#fff}
 .daybox .row .m{font-family:"Space Grotesk",sans-serif;color:var(--ink);font-weight:500}
 .daybox .none{font-size:12px;color:var(--dim)}
 
+/* 刪除 */
+.rc{display:grid;grid-template-columns:1fr auto auto;gap:10px;align-items:center;padding:9px 0;border-bottom:1px solid var(--bg)}
+.rc:last-child{border-bottom:none}
+.rc .ti{min-width:0}
+.rc .ti b{display:block;font-size:13px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rc .ti span{font-size:10.5px;color:var(--dim);display:flex;align-items:center;gap:5px;margin-top:2px}
+.rc .ti span i{width:6px;height:6px;border-radius:2px;flex:none}
+.rc .am{font:700 14px "Space Grotesk",sans-serif;font-variant-numeric:tabular-nums}
+.del{border:1px solid var(--line);background:#fff;color:var(--dim);border-radius:8px;height:28px;min-width:28px;padding:0 7px;
+  font:500 11px "Noto Sans TC",sans-serif;cursor:pointer;transition:.16s;display:inline-flex;align-items:center;justify-content:center}
+.del svg{width:13px;height:13px}
+.del:hover{color:#B5432B;border-color:#E9C2B8}
+.del.arm{background:#B5432B;border-color:#B5432B;color:#fff;padding:0 9px}
+.del:disabled{opacity:.5;cursor:default}
+.rc.gone{opacity:.35;pointer-events:none}
+.more{display:block;width:100%;margin-top:6px;border:none;background:none;color:var(--accent);font:500 12px "Noto Sans TC",sans-serif;padding:8px;cursor:pointer}
+.daybox .row{align-items:center}
+
 /* 統計 */
 .stat3{display:flex;gap:10px;margin-bottom:15px}
 .st{flex:1;background:var(--bg);border-radius:12px;padding:10px 12px}
@@ -248,6 +266,13 @@ input:focus{border-color:var(--accent);background:#fff}
     </form>
   </div>
 
+  <!-- 最近紀錄 -->
+  <div class="card">
+    <h2>最近記的</h2>
+    <div class="hint">記錯了？按垃圾桶，再按一次「確定」就會從試算表刪掉</div>
+    <div id="recent"></div>
+  </div>
+
   <!-- 日曆熱區 -->
   <div class="card">
     <h2>這個月每天花多少</h2>
@@ -347,7 +372,7 @@ const READ_TIMEOUT = 9000;
 let entries = [], mode = 'loading', selDay = null;
 
 /* ══════════ 讀取（JSONP + 逾時重試） ══════════ */
-function jsonp(){
+function jsonp(q = 'action=read'){
   return new Promise(resolve=>{
     const cb = 'cb_' + Math.random().toString(36).slice(2);
     const s = document.createElement('script');
@@ -357,7 +382,7 @@ function jsonp(){
       clearTimeout(timer); delete window[cb]; s.remove(); resolve(v); }
     window[cb] = d => finish(d);
     s.onerror = () => finish(null);
-    s.src = GAS_URL + (GAS_URL.includes('?')?'&':'?') + 'action=read&callback=' + cb + '&_=' + Date.now();
+    s.src = GAS_URL + (GAS_URL.includes('?')?'&':'?') + q + '&callback=' + cb + '&_=' + Date.now();
     document.body.appendChild(s);
   });
 }
@@ -516,7 +541,8 @@ function renderDayBox(){
   }
   box.innerHTML = `<div class="dh">${now.getMonth()+1} 月 ${selDay} 日　共 ${fmt(sum(list))}</div>` +
     list.map(e=>`<div class="row"><b>${esc(e.category)}${e.note?'・'+esc(e.note):''}</b>
-      <span><span style="margin-right:10px">${esc(e.user)}</span><span class="m">${fmt(e.amount)}</span></span></div>`).join('');
+      <span style="display:flex;align-items:center;gap:10px"><span>${esc(e.user)}</span><span class="m">${fmt(e.amount)}</span>${delBtn(e)}</span></div>`).join('');
+  bindDel(box);
 }
 
 /* ══════════ 區間分析 ══════════ */
@@ -657,6 +683,62 @@ document.querySelectorAll('.seg button').forEach(b=>b.addEventListener('click',(
   renderRange();
 }));
 
+/* ══════════ 最近紀錄＋刪除 ══════════ */
+const TRASH = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V4h6v3"/></svg>';
+let recentN = 8;
+function delBtn(e){
+  return `<button type="button" class="del" data-i="${entries.indexOf(e)}" aria-label="刪除這筆">${TRASH}</button>`;
+}
+function renderRecent(){
+  const el = document.getElementById('recent');
+  if(!entries.length){ el.innerHTML = '<div class="empty">還沒有紀錄。</div>'; return; }
+  const list = entries.slice(-recentN).reverse();   // 試算表順序＝記帳順序，最後面的是最新的
+  const colOf = c => CAT_COLORS[CATS.indexOf(c)] || '#9AA79F';
+  el.innerHTML = list.map(e=>`<div class="rc">
+      <div class="ti"><b>${esc(e.note || sh(e.category))}</b>
+        <span><i style="background:${colOf(e.category)}"></i>${sh(e.category)}・${fmtD(e.date).slice(5)}・${esc(e.user)}</span></div>
+      <div class="am">${fmt(e.amount)}</div>${delBtn(e)}</div>`).join('') +
+    (entries.length > recentN ? `<button type="button" class="more" id="moreBtn">再多看 10 筆</button>` : '');
+  bindDel(el);
+  const mb = document.getElementById('moreBtn');
+  if(mb) mb.addEventListener('click', ()=>{ recentN += 10; renderRecent(); });
+}
+let armTimer;
+function bindDel(root){
+  root.querySelectorAll('.del').forEach(b=>b.addEventListener('click', ()=>{
+    if(mode !== 'live'){ showToast('現在是示範資料，沒辦法刪除。', true); return; }
+    if(!b.classList.contains('arm')){
+      document.querySelectorAll('.del.arm').forEach(x=>{ x.classList.remove('arm'); x.innerHTML = TRASH; });
+      b.classList.add('arm'); b.textContent = '確定';
+      clearTimeout(armTimer);
+      armTimer = setTimeout(()=>{ b.classList.remove('arm'); b.innerHTML = TRASH; }, 3500);
+      return;
+    }
+    clearTimeout(armTimer);
+    doDelete(Number(b.dataset.i), b);
+  }));
+}
+async function doDelete(i, btn){
+  const e = entries[i];
+  if(!e) return;
+  btn.disabled = true; btn.textContent = '刪除中';
+  const row = btn.closest('.rc,.row'); if(row) row.classList.add('gone');
+  const q = new URLSearchParams({action:'delete', date:e.date, category:e.category,
+                                 amount:String(e.amount), user:e.user, note:e.note || ''}).toString();
+  const r = await jsonp(q);
+  if(r && r.ok){
+    entries.splice(entries.indexOf(e), 1);
+    render();
+    showToast(`已刪除 ${sh(e.category)} NT$ ${fmt(e.amount)}`);
+    return;
+  }
+  if(row) row.classList.remove('gone');
+  btn.disabled = false; btn.classList.remove('arm'); btn.innerHTML = TRASH;
+  if(Array.isArray(r))          showToast('試算表那邊還不認得「刪除」，Apps Script 要先更新並重新部署。', true);
+  else if(r && r.error==='not_found') showToast('試算表裡找不到這筆，可能已經被刪過了。按「重新載入」看看。', true);
+  else                          showToast('沒刪成功，網路不穩的話等一下再試一次。', true);
+}
+
 /* ══════════ 主渲染 ══════════ */
 function render(){
   const mk = monthKeys(6);
@@ -686,7 +768,7 @@ function render(){
         <div class="bar"><div class="fill" style="width:${o.v/mx*100}%;background:${o.col}"></div></div></div>`).join('')
     : `<div class="empty">這個月還沒有紀錄。記下第一筆，這裡就會長出來。</div>`;
 
-  renderCal(); renderDayBox(); renderRange();
+  renderCal(); renderDayBox(); renderRange(); renderRecent();
 }
 
 /* ══════════ 狀態列 ══════════ */
